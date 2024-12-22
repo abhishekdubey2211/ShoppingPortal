@@ -41,9 +41,11 @@ public class SecurityConfiguration {
 	@Bean
 	public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 		http.csrf(AbstractHttpConfigurer::disable).authorizeHttpRequests(registry -> {
-			registry.requestMatchers("/api/login/**").permitAll();
+//			registry.requestMatchers("/api/login/**").permitAll();
+			registry.requestMatchers("/api/**").permitAll();
+
 //			registry.requestMatchers(HttpMethod.POST, "/api/v3/user").permitAll();
-//			registry.requestMatchers("/api/v1/admin").hasRole("SUPERADMIN");
+//			registry.requestMatchers("/api/v1/**").hasRole("SUPERADMIN");
 //			registry.requestMatchers("/api/v2/**").hasAnyRole("SUPERADMIN", "ADMIN");
 //			registry.requestMatchers("/api/v3/**").hasAnyRole("SUPERADMIN", "ADMIN", "USER");
 //			registry.requestMatchers("/api/v4/**").hasRole("USER");

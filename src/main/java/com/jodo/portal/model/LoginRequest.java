@@ -40,4 +40,5 @@ public class LoginRequest {
 	private String loginsessionkey;
 	private String authenticationkey;
 	private String otp;
+	private String method;
 }

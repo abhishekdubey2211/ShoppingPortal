@@ -28,6 +28,7 @@ import com.jodo.portal.model.Cart;
 import com.jodo.portal.model.Email;
 import com.jodo.portal.model.EndUser;
 import com.jodo.portal.model.Role;
+import com.jodo.portal.model.UserParameterDetails;
 import com.jodo.portal.redis.RedisUtil;
 import com.jodo.portal.repository.ActiveUserRepository;
 import com.jodo.portal.repository.AddressRepository;
@@ -77,7 +78,7 @@ public class EndUserServiceImplementation implements EndUserService, MessageCons
 
 	@Override
 	public List<EndUserDTO> addUser(EndUserDTO pushUserDTO, String strRoles) {
-		ErrorStatusDetails error = pushUserDTO.validateEndUserRequest(pushUserDTO);
+		ErrorStatusDetails error = pushUserDTO.validateEndUserRequest(pushUserDTO, "add");
 		if (error != null) {
 			throw new CustomException(error.status(), "BAD_REQUEST", error.statusdescription());
 		}
@@ -103,15 +104,20 @@ public class EndUserServiceImplementation implements EndUserService, MessageCons
 		pushUser.setUserlastupdatedate("");
 		pushUser.setRoles(roles);
 		pushUser.getAddress().forEach(address -> address.setUser(pushUser));
-		pushUser.getUserParameterDetails().forEach(parameter -> parameter.setUser(pushUser));
 		pushUser.setCart(Cart.builder().totalamount(0.0).user(pushUser).build());
+		List<UserParameterDetails> userDetails = new ArrayList<>(pushUser.getUserParameterDetails());
+		userDetails.add(UserParameterDetails.builder().parameterid(103).srno(1).description("User UniqueId")
+				.value(UUID.randomUUID().toString()).build());
+		pushUser.setUserParameterDetails(userDetails);
+		pushUser.getUserParameterDetails().forEach(parameter -> parameter.setUser(pushUser));
+
 		EndUser saveduser = enduserRepository.save(pushUser);
 		EndUserDTO savedDto = userMapper.convertToUserDTO(saveduser);
 
 		String strBody = WELCOME_MAIL_BODY.replace("$$USERNAME$$", savedDto.getUsername());
 		String strSubject = WELCOME_MAIL_SUBJECT;
 
-		String mailStatus = sendEmail(savedDto, strSubject, strBody);
+		Boolean mailStatus = sendEmail(savedDto, strSubject, strBody);
 		logger.info("Mail status :: " + mailStatus);
 		updateCachedData(pushUserDTO);
 		return List.of(savedDto);
@@ -119,6 +125,14 @@ public class EndUserServiceImplementation implements EndUserService, MessageCons
 
 	@Override
 	public List<EndUserDTO> editUser(EndUserDTO putUserDTO) {
+		ErrorStatusDetails error = putUserDTO.validateEndUserRequest(putUserDTO, "edit");
+		if (error != null) {
+			throw new CustomException(error.status(), "BAD_REQUEST", error.statusdescription());
+		}
+		if (putUserDTO.getUserid() <= 0) {
+			throw new CustomException(207, "BAD_REQUEST", "UserId not Found");
+		}
+
 		EndUser putUser = userMapper.convertToUserEntity(putUserDTO);
 		EndUser retrievedUser = enduserRepository.findById(putUser.getId())
 				.orElseThrow(() -> new ResourceNotFoundException("No user found with UserId " + putUser.getId()));
@@ -137,8 +151,8 @@ public class EndUserServiceImplementation implements EndUserService, MessageCons
 		retrievedUser.setIsactive(1);
 		retrievedUser.setIsdelete(0);
 		if (!putUser.getPassword().equals(retrievedUser.getPassword())) {
-//			String encryptedPassword = passwordEncoder.encode(putUser.getPassword());
-//			retrievedUser.setPassword(encryptedPassword);
+			String encryptedPassword = passwordEncoder.encode(putUser.getPassword());
+			retrievedUser.setPassword(encryptedPassword);
 		}
 		retrievedUser.setProfileimage(putUser.getProfileimage());
 		retrievedUser.setUserlastupdatedate(sf.format(new Date()));
@@ -160,6 +174,10 @@ public class EndUserServiceImplementation implements EndUserService, MessageCons
 
 	@Override
 	public ArrayList<Map<String, Object>> getAllUsersNative(Long nUserid) {
+		if (nUserid <= 0) {
+			throw new CustomException(207, "BAD_REQUEST", "UserId not Found");
+		}
+
 		String sql = "SELECT user_id, role FROM user_roles WHERE user_id = :userId";
 		Query query = entityManager.createNativeQuery(sql);
 		query.setParameter("userId", nUserid);
@@ -198,6 +216,10 @@ public class EndUserServiceImplementation implements EndUserService, MessageCons
 	@Override
 	public List<String> disableUser(Long id) {
 		try {
+			if (id <= 0) {
+				throw new CustomException(207, "BAD_REQUEST", "UserId not Found");
+			}
+
 			EndUser retrivedUser = getSingleUserByUserId(id);
 			retrivedUser.setIsactive(0);
 			retrivedUser.setIsdelete(1);
@@ -223,7 +245,7 @@ public class EndUserServiceImplementation implements EndUserService, MessageCons
 			if (existingUser.isPresent()) {
 				if (existingUser.get().getIsdelete() == 0) {
 					logger.warn("checkUserEmailExists : User with Email {} already exists", pushUser.getEmail());
-					throw new CustomException(301, "BAD_REQUEST",
+					throw new CustomException(208, "BAD_REQUEST",
 							"User with Email " + pushUser.getEmail() + " already exists");
 				}
 			}
@@ -270,7 +292,7 @@ public class EndUserServiceImplementation implements EndUserService, MessageCons
 			user = enduserRepository.findById(id)
 					.orElseThrow(() -> new ResourceNotFoundException("No user found with UserId " + id));
 			if (user.getIsactive() == 0 && user.getIsdelete() == 1) {
-				throw new ResourceNotFoundException("No user found with UserId " + id);
+				throw new CustomException(209, "BAD_REQUEST", "User with Userid " + id + " does not  exists");
 			}
 			logger.info("getSingleUserByUserId : Retriving userdetails from Database");
 			redis.set(USER_REDIS_KEY + user.getId(), userMapper.convertToUserDTO(user));
@@ -303,20 +325,20 @@ public class EndUserServiceImplementation implements EndUserService, MessageCons
 		try {
 			EndUser user = enduserRepository.findByEmail(strUserEmail).orElseThrow(() -> new CustomException(301,
 					"BAD_REQUEST", "User with Email " + strUserEmail + " does not exist"));
+
 			String otp = String.format("%06d", new Random().nextInt(999999));
 			EndUserDTO userDto = userMapper.convertToUserDTO(user);
-
 			String strOtpBody = OTP_BODY.replace("$$OTP$$", otp).replace("$$USERNAME$$", userDto.getUsername());
-
-			sendEmail(userDto, OTP_SUBJECT, strOtpBody);
-			redis.setWithExpiration("USER_LOGINOTP#" + user.getEmail(), otp, 2, TimeUnit.MINUTES);
-			return true;
+			Boolean isMailsend = sendEmail(userDto, OTP_SUBJECT, strOtpBody);
+			redis.setWithExpiration("USER_LOGINOTP#" + user.getEmail(), otp, 10, TimeUnit.MINUTES);
+			logger.info("Generated Otp Shared on " + strUserEmail + " || OTP :: " + otp);
+			return isMailsend;
 		} catch (Exception e) {
 			throw e;
 		}
 	}
 
-	public String sendEmail(EndUserDTO pushEmail, String strSubject, String strBody) {
+	public Boolean sendEmail(EndUserDTO pushEmail, String strSubject, String strBody) {
 		try {
 			Email email = new Email();
 			email.setToAddresses(pushEmail.getEmail());
@@ -326,9 +348,9 @@ public class EndUserServiceImplementation implements EndUserService, MessageCons
 			EmailService mail = new EmailService();
 			HashMap<String, Object> mailResponse = mail.pushEmail(email, null);
 			if (mailResponse.containsKey("error")) {
-				throw new CustomException(125, "FAIL", (String) mailResponse.get("error"));
+				return false;
 			} else if (mailResponse.containsKey("success")) {
-				return "Welcome Mail Pushed SuccessFully";
+				return true;
 			}
 		} catch (Exception e) {
 			throw e;

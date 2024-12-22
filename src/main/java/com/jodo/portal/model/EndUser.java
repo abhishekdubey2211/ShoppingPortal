@@ -39,70 +39,63 @@ import lombok.ToString;
 @AllArgsConstructor
 @NoArgsConstructor
 @ToString
-@Table(name = "user",
-       indexes = {
-           @Index(name = "idx_username", columnList = "username"),
-           @Index(name = "idx_email", columnList = "email"),
-           @Index(name = "idx_contact", columnList = "contact")
-       })
+@Table(name = "user", indexes = { @Index(name = "idx_username", columnList = "username"),
+		@Index(name = "idx_email", columnList = "email"), @Index(name = "idx_contact", columnList = "contact") })
 public class EndUser {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private long id;
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private long id;
 
-    @NotBlank(message = "Username is mandatory")
-    @Size(max = 50, message = "Username must be less than 50 characters")
-    private String username;
+	@NotBlank(message = "Username is mandatory")
+	@Size(max = 50, message = "Username must be less than 50 characters")
+	private String username;
 
-    @NotBlank(message = "Password is mandatory")
-    private String password;
+	@NotBlank(message = "Password is mandatory")
+	private String password;
 
-    @NotBlank(message = "Designation is mandatory")
-    @Size(max = 100, message = "Designation must be less than 100 characters")
-    private String designation;
+	@NotBlank(message = "Designation is mandatory")
+	@Size(max = 100, message = "Designation must be less than 100 characters")
+	private String designation;
 
-    @NotBlank(message = "Email is mandatory")
-    @Email(message = "Invalid Email Address")
-    @Column(unique = true)
-    private String email;
+	@NotBlank(message = "Email is mandatory")
+	@Email(message = "Invalid Email Address")
+	@Column(unique = true)
+	private String email;
 
-    @NotBlank(message = "Contact number is mandatory")
-    @Pattern(regexp = "^\\+?[0-9]{1,3}?[-.\\s]?\\(?[0-9]{1,4}?\\)?[-.\\s]?[0-9]{1,4}[-.\\s]?[0-9]{1,9}$",
-             message = "Invalid contact number format")
-    private String contact;
+	@NotBlank(message = "Contact number is mandatory")
+	@Pattern(regexp = "^\\+?[0-9]{1,3}?[-.\\s]?\\(?[0-9]{1,4}?\\)?[-.\\s]?[0-9]{1,4}[-.\\s]?[0-9]{1,9}$", message = "Invalid contact number format")
+	private String contact;
 
-    private String profileimage;
+	private String profileimage;
 
-    private int isactive; // Consider changing to boolean if appropriate
+	private int isactive; // Consider changing to boolean if appropriate
 
-    private int isdelete;
+	private int isdelete;
 
-    private String usercreationdate;
+	private String usercreationdate;
 
-    @Column(name="date_of_birth")
-    private String dateofbirth;
-    
-    private String userlastupdatedate;
+	@Column(name = "date_of_birth")
+	private String dateofbirth;
 
-    @Transient
-    private String role;
+	private String userlastupdatedate;
 
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"))
-    @Enumerated(EnumType.STRING)
-    @Column(name = "role")
-    private Set<Role> roles = new HashSet<>();
+	@Transient
+	private String role;
 
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-    @JsonIgnore
-    private List<UserParameterDetails> userParameterDetails = new ArrayList<>();
+	@ElementCollection(fetch = FetchType.EAGER)
+	@CollectionTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"))
+	@Enumerated(EnumType.STRING)
+	@Column(name = "role")
+	private Set<Role> roles = new HashSet<>();
 
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-    @JsonIgnore 
-    private List<RessidentialAddress> address = new ArrayList<>();
+	@OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+	private List<UserParameterDetails> userParameterDetails = new ArrayList<>();
 
-    @OneToOne(cascade = CascadeType.ALL)
-    @JoinColumn(name = "cart_id")
-    @JsonIgnore
-    private Cart cart;
+	@OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+	private List<RessidentialAddress> address = new ArrayList<>();
+
+	@OneToOne(cascade = CascadeType.ALL)
+	@JoinColumn(name = "cart_id")
+	@JsonIgnore
+	private Cart cart;
 }

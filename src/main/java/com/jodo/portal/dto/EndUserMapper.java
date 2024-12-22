@@ -18,6 +18,7 @@ public class EndUserMapper {
         dto.setDateofbirth(endUser.getDateofbirth());
         dto.setProfileimage(endUser.getProfileimage());
 //        dto.setRole(endUser.getRole());
+        dto.setConfirmpassword(endUser.getPassword());
         dto.setPassword(endUser.getPassword());
         dto.setAddress(endUser.getAddress() != null ? 
             endUser.getAddress().stream().map(this::convertToAddressDTO).toList() : new ArrayList<>());
@@ -32,7 +33,7 @@ public class EndUserMapper {
         EndUser endUser = new EndUser();
         endUser.setId(endUserDTO.getUserid());
         endUser.setUsername(endUserDTO.getUsername());
-        endUser.setPassword(endUserDTO.getPassword());
+        endUser.setPassword(endUserDTO.getConfirmpassword());
         endUser.setDesignation(endUserDTO.getDesignation());
         endUser.setEmail(endUserDTO.getEmail());
         endUser.setDateofbirth(endUserDTO.getDateofbirth());

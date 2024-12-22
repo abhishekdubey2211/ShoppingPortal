@@ -23,6 +23,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -50,6 +51,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+//@CrossOrigin(origins = "*")
 @RestController
 @RequestMapping("/api/login")
 @Service
@@ -92,23 +94,29 @@ public class LoginController {
 				throw new CustomException(validationError.status(), "BAD_REQUEST", validationError.statusdescription());
 			}
 
-			if (pushLogin.getPassword() == null || pushLogin.getPassword() == "") {
-				if ((pushLogin.getOtp() != null || pushLogin.getOtp() != "")
-						&& (pushLogin.getLoginid() != null || pushLogin.getLoginid() != "")) {
-					String userOTP = pushLogin.getOtp();
-					String retrivedUserOtp = redis.get("USER_LOGINOTP#" + pushLogin.getLoginid());
-					logger.info("redis retrived otp = " + retrivedUserOtp + " || userpassed otp " + pushLogin.getOtp());
-					if (!userOTP.equals(retrivedUserOtp.replace("\"", "").trim())) {
-						throw new CustomException(125, "BAD_REQUEST", "Invalid Provided User OTP");
+			if (pushLogin.getMethod().equalsIgnoreCase("OTP")) {
+					if ((pushLogin.getOtp() != null || pushLogin.getOtp() != "")
+							&& (pushLogin.getLoginid() != null || pushLogin.getLoginid() != "")) {
+						String userOTP = pushLogin.getOtp();
+						String retrivedUserOtp = redis.get("USER_LOGINOTP#" + pushLogin.getLoginid());
+						logger.info(
+								"redis retrived otp = " + retrivedUserOtp + " || userpassed otp " + pushLogin.getOtp());
+						if (retrivedUserOtp ==null) {
+							throw new CustomException(111, "BAD_REQUEST", "Invalid User OTP");
+						}
+						
+						if (!userOTP.equals(retrivedUserOtp.replace("\"", "").trim())) {
+							throw new CustomException(110, "BAD_REQUEST", "Invalid  User OTP");
+						}
+						authToken = loginServiceImplementation.authenticate(pushLogin, false);
+					} else {
+						throw new CustomException(109, "BAD_REQUEST", "OTP and Loginid is Mendatory", HttpStatus.BAD_REQUEST);
 					}
-					Map<String, Object> generatedKey = loginServiceImplementation.generateKey();
-					pushLogin.setLoginsessionkey((String) generatedKey.get("loginsessionkey"));
-					pushLogin.setAuthenticationkey((String) generatedKey.get("authenticationkey"));
-					pushLogin.setPassword("Logined Woth OTP");
-					authToken = loginServiceImplementation.authenticate(pushLogin, false);
-				}
-			} else {
+			} else if (pushLogin.getMethod().equalsIgnoreCase("PASSWORD")) {
 				authToken = loginServiceImplementation.authenticate(pushLogin, true);
+			} else {
+				throw new CustomException(108, "BAD_REQUEST", "Invalid Authentication Method Type",
+						HttpStatus.BAD_REQUEST);
 			}
 
 			if (authToken != null) {
@@ -118,8 +126,8 @@ public class LoginController {
 				return ResponseEntity.status(HttpStatus.OK).headers(headers).body(
 						ResponseApi.createResponse(1, "Login Authentication Done Successfully", List.of(authToken)));
 			} else {
-				return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-						.body(ResponseApi.createResponse(0, "Login Authentication failed.", "Authentication failed."));
+				throw new CustomException(401, "UNAUTHORIZED", "Login Authentication failed.",
+						HttpStatus.UNAUTHORIZED);
 			}
 		} catch (Exception e) {
 			throw e;
@@ -153,15 +161,26 @@ public class LoginController {
 	}
 
 	@PostMapping("/otp/{useremail}")
-	public ResponseEntity<ResponseApi> generateOtp(@PathVariable("useremail") String userEmail) {
+	public ResponseEntity<ResponseApi> generateOtp(@PathVariable("useremail") String userEmail)
+			throws DataLengthException, IllegalStateException, InvalidCipherTextException {
+		Map<String, Object> response = new LinkedHashMap<>();
+
 		Boolean isMailSend = userEndUserServiceImplementation.requestOtp(userEmail);
-		Map<String, String> response = new LinkedHashMap<>();
 		if (isMailSend) {
-			return ResponseEntity.status(HttpStatus.OK).body(ResponseApi.createResponse(1,
-					"Login OTP Send Successfully", List.of("Login OTP Send Successfully")));
+			Map<String, Object> generatedKey = loginServiceImplementation.generateKey();
+			response.put("loginsessionkey", generatedKey.get("loginsessionkey"));
+			response.put("authenticationkey", generatedKey.get("authenticationkey"));
+			response.put("status", "Login OTP Send Successfully on " + userEmail);
+		} else {
+			response.put("status", "Fail to Send Login OTP to " + userEmail);
+		}
+
+		if (isMailSend) {
+			return ResponseEntity.status(HttpStatus.OK)
+					.body(ResponseApi.createResponse(1, "Login OTP Send Successfully", List.of(response)));
 		} else {
 			return ResponseEntity.status(HttpStatus.OK)
-					.body(ResponseApi.createResponse(0, "Fail to Send Login OTP", List.of("Fail to Send Login OTP")));
+					.body(ResponseApi.createResponse(0, "Fail to Send Login OTP", List.of(response)));
 		}
 	}
 
@@ -181,7 +200,7 @@ public class LoginController {
 								.body(ResponseApi.createResponse(1, "Login OTP Send Successfully", List.of(response)));
 					} catch (Exception e) {
 						logger.error("Some Exception occured  isvalidauth :: " + isvalidauth);
-						throw new CustomException(109, "UNAUTHORIZED", "AccessToken  invalid", HttpStatus.UNAUTHORIZED);
+						throw new CustomException(107, "UNAUTHORIZED", "AccessToken  invalid", HttpStatus.UNAUTHORIZED);
 					}
 				}
 			}
@@ -196,7 +215,7 @@ public class LoginController {
 		if (loginRequest.getLoginid() == null || loginRequest.getLoginid().isEmpty()) {
 			return new ErrorStatusDetails(101, "LoginId is mandatory", HttpStatus.BAD_REQUEST);
 		}
-		if (loginRequest.getPassword() == null || loginRequest.getPassword().isEmpty()) {
+		if (loginRequest.getPassword() == null) {
 			return new ErrorStatusDetails(102, "Password is mandatory", HttpStatus.BAD_REQUEST);
 		}
 		if (loginRequest.getLoginsessionkey() == null || loginRequest.getLoginsessionkey().isEmpty()) {
@@ -204,6 +223,13 @@ public class LoginController {
 		}
 		if (loginRequest.getAuthenticationkey() == null || loginRequest.getAuthenticationkey().isEmpty()) {
 			return new ErrorStatusDetails(104, "Authentication key is mandatory", HttpStatus.BAD_REQUEST);
+		}
+		if (loginRequest.getMethod() == null) {
+			return new ErrorStatusDetails(105, "Authentication Method is mandatory", HttpStatus.BAD_REQUEST);
+		}
+		if (!loginRequest.getMethod().equals("OTP") && !loginRequest.getMethod().equals("PASSWORD")) {
+			return new ErrorStatusDetails(106, "Invalid Authentication Method. It should be OTP or PASSWORD",
+					HttpStatus.BAD_REQUEST);
 		}
 		return null;
 	}

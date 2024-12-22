@@ -57,8 +57,7 @@ public class EndUserController {
 		HashMap<String, String> heeaderRequest = new HashMap<>();
 		AuthUserDetails auth = login.getAuthDetails(request);
 		List<EndUserDTO> savedUser = userServiceImplementation.addUser(user, roles);
-		return ResponseEntity.status(HttpStatus.CREATED)
-				.body(ResponseApi.createResponse(1, "Admin registered successfully.", savedUser));
+		return ResponseEntity.status(HttpStatus.CREATED).body(ResponseApi.createResponse(1, "Admin registered successfully.", savedUser));
 	}
 
 	@PostMapping("/user")

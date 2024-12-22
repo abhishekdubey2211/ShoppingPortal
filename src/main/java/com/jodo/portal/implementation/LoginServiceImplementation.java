@@ -80,7 +80,7 @@ public class LoginServiceImplementation {
 			Optional<ActiveUserDetails> optionalSession = activeUserRepository.findByUseridAndActive(user.getId(), 1);
 			if (optionalSession.isPresent()) {
 				logout(optionalSession.get().getSessionid(), "FORCE_FULLY_LOGOUT");
-				throw new CustomException(202, "Login Fail",
+				throw new CustomException(112, "Login Fail",
 						"User " + optionalSession.get().getLoginid()
 								+ " is already logged in. Forcefully logging out. Please re-login.",
 						HttpStatus.BAD_REQUEST);
@@ -99,7 +99,7 @@ public class LoginServiceImplementation {
 			authUserDetails.setLogindatetime(sf.format(new Date()));
 
 			System.out.println("Serialized AuthUserDetails: " + authUserDetails);
-			logger.info("sessionKey  :: >>> " + sessionKey + "  || encSessionIdkey :: >>> " + sessionId);
+			logger.info("sessionKey  :: >>> " + sessionKey + "  || sessionId :: >>> " + sessionId);
 			redis.set("ACTIVE_USER#" + sessionId, authUserDetails);
 
 			// Storing ActiveUserDetails to db with sessionkey/RefreshToken
@@ -141,9 +141,9 @@ public class LoginServiceImplementation {
 			mapauthUser.put("refresh_token", strRefreshToken);
 			mapauthUser.put("password", user.getPassword());
 			mapauthUser.put("authorities", user.getRoles());
+
 			String AUTHORIZATION_TOKEN = authorizationTokenUtility.generateTokenfromUsername(mapauthUser,
 					user.getEmail());
-
 			accessTokenResponse.put("access_token", "Bearer " + JWTACCESS_TOKEN);
 			accessTokenResponse.put("authorization_token", AUTHORIZATION_TOKEN);
 			return accessTokenResponse;
@@ -157,11 +157,11 @@ public class LoginServiceImplementation {
 		try {
 			Optional<ActiveUserDetails> optionalSession = activeUserRepository.findBySessionidAndActive(sessionId, 1);
 			if (optionalSession.isEmpty()) {
-				throw new CustomException(103, "BAD_REQUEST", "Invalid Session Id", HttpStatus.BAD_REQUEST);
+				throw new CustomException(113, "BAD_REQUEST", "Invalid Session Id", HttpStatus.BAD_REQUEST);
 			}
 			ActiveUserDetails activeUserDetails = optionalSession.get();
 			if (activeUserDetails.getActive() == 0) {
-				throw new CustomException(103, "BAD_REQUEST", "Expired Session Id", HttpStatus.BAD_REQUEST);
+				throw new CustomException(114, "BAD_REQUEST", "Expired Session Id", HttpStatus.BAD_REQUEST);
 			}
 			activeUserDetails.setActive(0);
 			activeUserDetails.setLogoutreason(logoutReason);
@@ -181,7 +181,7 @@ public class LoginServiceImplementation {
 			isvalid = jwtTokenUtility.isTokenExpired(strExpiredJwtToken);
 		} catch (Exception e) {
 			String errorResponse = jwtTokenUtility.validateJwtToken(strExpiredJwtToken);
-			throw new CustomException(167, "BAD_REQUEST", errorResponse, HttpStatus.BAD_REQUEST);
+			throw new CustomException(115, "BAD_REQUEST", errorResponse, HttpStatus.BAD_REQUEST);
 		}
 		if (isvalid) {
 			String authSessionid = (String) jwtTokenUtility.getClaimFromToken(strExpiredJwtToken, "sessionid");
@@ -191,7 +191,7 @@ public class LoginServiceImplementation {
 			Map<String, Object> mapAuthenticationTokes = generateSessionTokens(user, authSessionid);
 			return mapAuthenticationTokes;
 		} else {
-			throw new CustomException(167, "BAD_REQUEST", "Token Not yet Expired", HttpStatus.BAD_REQUEST);
+			throw new CustomException(116, "BAD_REQUEST", "Token Not yet Expired", HttpStatus.BAD_REQUEST);
 		}
 	}
 
@@ -200,7 +200,7 @@ public class LoginServiceImplementation {
 		try {
 			String validationResponse = jwtTokenUtility.validateJwtToken(jwtToken);
 			if (!validationResponse.equals("success")) {
-				throw new CustomException(167, "UNAUTHORIZED", validationResponse, HttpStatus.UNAUTHORIZED);
+				throw new CustomException(417, "UNAUTHORIZED", validationResponse, HttpStatus.UNAUTHORIZED);
 			}
 			String sessionId = (String) jwtTokenUtility.getClaimFromToken(jwtToken, "sessionid");
 			logger.info("sessionid  :: " + sessionId);
@@ -208,7 +208,7 @@ public class LoginServiceImplementation {
 			String redisSessionDetails = redis.get("ACTIVE_USER#" + sessionId);
 			System.out.println("Redis Session Details: " + redisSessionDetails);
 			if (redisSessionDetails == null || redisSessionDetails.isEmpty()) {
-				throw new CustomException(167, "BAD_REQUEST", "Invalid SessionId not Found in Redis ",
+				throw new CustomException(117, "BAD_REQUEST", "Invalid SessionId not Found in Redis ",
 						HttpStatus.BAD_REQUEST);
 			}
 
@@ -229,30 +229,39 @@ public class LoginServiceImplementation {
 		Map<String, Object> response = new HashMap<>();
 
 		String strAccessToken = JsonWebToken.get("access_token");
+
+		// Removing Bearer and get JWT
 		String strAccessTokenHeader = jwtTokenUtility.getJWTfromHeader(strAccessToken);
 
+		// Validate the provided AccessToken
 		String accessTokenvalidationResponse = jwtTokenUtility.validateJwtToken(strAccessTokenHeader);
 		if (!accessTokenvalidationResponse.equals("success")) {
-			throw new CustomException(109, "UNAUTHORIZED", accessTokenvalidationResponse, HttpStatus.UNAUTHORIZED);
+			throw new CustomException(416, "UNAUTHORIZED", accessTokenvalidationResponse, HttpStatus.UNAUTHORIZED);
 		}
 
+		// If validated get sessionid from it
 		String jwtSessionid = (String) jwtTokenUtility.getClaimFromToken(strAccessTokenHeader, "sessionid");
+
 		if (jwtSessionid == null) {
 			logger.info("strAccessTokenHeader >>  " + strAccessTokenHeader);
-			throw new CustomException(109, "UNAUTHORIZED", "Invalid access_token", HttpStatus.UNAUTHORIZED);
+			throw new CustomException(415, "UNAUTHORIZED", "Invalid access_token", HttpStatus.UNAUTHORIZED);
 		}
 
 		String strAutherizationToken = JsonWebToken.get("authorization_token");
-		String authSessionid = (String) authorizationTokenUtility.getClaimFromToken(strAutherizationToken, "sessionid");
 
+		// Validate the Auth Token
 		String authTokenvalidationResponse = authorizationTokenUtility.validateJwtToken(strAutherizationToken);
 		if (!authTokenvalidationResponse.equals("success")) {
-			throw new CustomException(109, "UNAUTHORIZED", authTokenvalidationResponse, HttpStatus.UNAUTHORIZED);
+			throw new CustomException(414, "UNAUTHORIZED", authTokenvalidationResponse, HttpStatus.UNAUTHORIZED);
 		}
+
+		// If validated get sessionid from it
+		String authSessionid = (String) authorizationTokenUtility.getClaimFromToken(strAutherizationToken,
+				"refresh_token");
 
 		if (authSessionid == null) {
 			logger.info("authSessionid >>  " + authSessionid);
-			throw new CustomException(109, "UNAUTHORIZED", "Invalid authorization_token", HttpStatus.UNAUTHORIZED);
+			throw new CustomException(413, "UNAUTHORIZED", "Invalid authorization_token", HttpStatus.UNAUTHORIZED);
 		}
 
 		try {
@@ -265,17 +274,18 @@ public class LoginServiceImplementation {
 					AuthUserDetails authUserDetails = (AuthUserDetails) successData;
 					Boolean isvalidauth = false;
 					try {
-						isvalidauth = authUserDetails.getSessionId().equals(authSessionid);
+						isvalidauth = securityHandler.generateDescryptedSessionId(authUserDetails.getSessionId())
+								.equals(authSessionid);
 						if (isvalidauth == true) {
 							return authUserDetails;
 						} else {
 							logger.error("Some Exception occured  isvalidauth :: " + isvalidauth);
-							throw new CustomException(109, "UNAUTHORIZED", "invalid authorization_token",
+							throw new CustomException(412, "UNAUTHORIZED", "invalid authorization_token",
 									HttpStatus.UNAUTHORIZED);
 						}
 					} catch (Exception e) {
 						logger.error("Some Exception occured  isvalidauth :: " + isvalidauth);
-						throw new CustomException(109, "UNAUTHORIZED", "AccessToken or AuthorizationToken invalid",
+						throw new CustomException(411, "UNAUTHORIZED", "AccessToken or AuthorizationToken invalid",
 								HttpStatus.UNAUTHORIZED);
 					}
 				}
@@ -299,25 +309,25 @@ public class LoginServiceImplementation {
 
 		String accessTokenvalidationResponse = jwtTokenUtility.validateJwtToken(webtoken);
 		if (!accessTokenvalidationResponse.equals("success")) {
-			throw new CustomException(109, "UNAUTHORIZED", accessTokenvalidationResponse, HttpStatus.UNAUTHORIZED);
+			throw new CustomException(410, "UNAUTHORIZED", accessTokenvalidationResponse, HttpStatus.UNAUTHORIZED);
 		}
 
 		if (jwtSessionid == null) {
 			logger.info("webtoken >>  " + webtoken);
-			throw new CustomException(109, "UNAUTHORIZED", "Invalid access_token", HttpStatus.UNAUTHORIZED);
+			throw new CustomException(409, "UNAUTHORIZED", "Invalid access_token", HttpStatus.UNAUTHORIZED);
 		}
 
 //		String authSessionid = (String) authorizationTokenUtility.getClaimFromToken(autherizationToken, "sessionid");
 
 		String authTokenvalidationResponse = authorizationTokenUtility.validateJwtToken(autherizationToken);
 		if (!authTokenvalidationResponse.equals("success")) {
-			throw new CustomException(109, "UNAUTHORIZED", authTokenvalidationResponse, HttpStatus.UNAUTHORIZED);
+			throw new CustomException(408, "UNAUTHORIZED", authTokenvalidationResponse, HttpStatus.UNAUTHORIZED);
 		}
 		String strRefreshToken = (String) authorizationTokenUtility.getClaimFromToken(autherizationToken,
 				"refresh_token");
 		if (strRefreshToken == null) {
 			logger.info("strRefreshToken >>  " + strRefreshToken);
-			throw new CustomException(109, "UNAUTHORIZED", "Invalid authorization_token", HttpStatus.UNAUTHORIZED);
+			throw new CustomException(407, "UNAUTHORIZED", "Invalid authorization_token", HttpStatus.UNAUTHORIZED);
 		}
 
 		logger.info("JWT sessionid  :  " + jwtSessionid + " ||   Auth strRefreshToken : " + strRefreshToken);
@@ -334,7 +344,7 @@ public class LoginServiceImplementation {
 							.equals(securityHandler.generateEncryptedSessionId(strRefreshToken));
 				} catch (Exception e) {
 					logger.error("Some Exception occured  isvalidauth :: " + isvalidauth);
-					throw new CustomException(109, "UNAUTHORIZED", "authorization_token invalid",
+					throw new CustomException(406, "UNAUTHORIZED", "authorization_token invalid",
 							HttpStatus.UNAUTHORIZED);
 				}
 				response.put("isvalid_authorization_token", isvalidauth);
@@ -351,7 +361,12 @@ public class LoginServiceImplementation {
 		String loginSessionKey = pushLogin.getLoginsessionkey();
 		String loginId = pushLogin.getLoginid();
 		String authKey = pushLogin.getAuthenticationkey();
-		String decryptedSessionId = securityHandler.generateDescryptedSessionId(loginSessionKey);
+		String decryptedSessionId = null;
+		try {
+			decryptedSessionId = securityHandler.generateDescryptedSessionId(loginSessionKey);
+		} catch (Exception e) {
+			throw new CustomException(119, "BAD_REQUEST", "Invalid Loginsessionkey or Authenticationkey");
+		}
 
 		// Validate session key and authentication key
 		String storedAuthKey = redis.getHashField("LOGINSESSIONKEY#" + loginSessionKey, decryptedSessionId);
@@ -359,37 +374,36 @@ public class LoginServiceImplementation {
 				loginSessionKey);
 
 		if (storedAuthKey == null || !authKey.trim().equals(storedAuthKey.replace("\"", "").trim())) {
-			throw new CustomException(104, "BAD_REQUEST", "Invalid Loginsessionkey or Key");
+			throw new CustomException(120, "BAD_REQUEST", "Invalid Loginsessionkey or Authenticationkey");
 		}
 
 		try {
 			if (isAuthenticationRequired) {
-				// Authenticate user credentials
+				// Authenticate user credentials only if Authentication is with password
 				Authentication authentication = authenticationManager
 						.authenticate(new UsernamePasswordAuthenticationToken(loginId, pushLogin.getPassword()));
 
 				if (!authentication.isAuthenticated()) {
-					throw new CustomException(401, "UNAUTHORIZED", "Invalid Username or Password",
+					throw new CustomException(408, "UNAUTHORIZED", "Invalid Username or Password",
 							HttpStatus.UNAUTHORIZED);
 				}
 				// Clear session key after successful authentication and return token details
 				SecurityContextHolder.getContext().setAuthentication(authentication);
 			}
-			redis.delete("LOGINSESSIONKEY#" + loginSessionKey);
-			return generateSessionId(loginId, authKey);
-
 		} catch (BadCredentialsException e) {
-			throw new CustomException(401, "UNAUTHORIZED", "Invalid Username or Password", HttpStatus.UNAUTHORIZED);
+			throw new CustomException(418, "UNAUTHORIZED", "Invalid Username or Password", HttpStatus.UNAUTHORIZED);
 		}
+//			redis.delete("LOGINSESSIONKEY#" + loginSessionKey);
+//			redis.delete( "USER_LOGINOTP#" + pushLogin.getLoginid());
+		return generateSessionId(loginId, authKey);
 	}
 
 	public Map<String, Object> generateKey()
 			throws DataLengthException, IllegalStateException, InvalidCipherTextException {
 		String strKey1 = securityHandler.generateRandomKey(30);
-//		String strKey2 = security.generateRandomKey(30);
 		String strKey2 = UUID.randomUUID().toString();
 		String strEncKey1 = securityHandler.generateEncryptedSessionId(strKey1);
-		redis.setHashFieldWithExpiration("LOGINSESSIONKEY#" + strEncKey1, strKey1, strKey2, 5, TimeUnit.HOURS);
+		redis.setHashFieldWithExpiration("LOGINSESSIONKEY#" + strEncKey1, strKey1, strKey2, 24, TimeUnit.HOURS);
 		Map<String, Object> loginserviceResponse = new HashMap<>();
 		loginserviceResponse.put("loginsessionkey", strEncKey1);
 		loginserviceResponse.put("authenticationkey", strKey2);

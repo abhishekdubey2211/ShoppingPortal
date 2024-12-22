@@ -103,7 +103,7 @@ public class JWTEncryptionUtility {
 			InvalidAlgorithmParameterException, IllegalBlockSizeException, BadPaddingException, IOException {
 		try {
 			String jwtToken = Jwts.builder().claims(claims).subject(subject).issuedAt(new Date())
-					.expiration(Date.from(Instant.now().plusMillis(TimeUnit.MINUTES.toMillis(1)))).signWith(key())
+					.expiration(Date.from(Instant.now().plusMillis(TimeUnit.SECONDS.toMillis(120)))).signWith(key())
 					.compact();
 			return (isEncryptedJWT) ? encryptedJWT(jwtToken) : jwtToken;
 		} catch (Exception e) {

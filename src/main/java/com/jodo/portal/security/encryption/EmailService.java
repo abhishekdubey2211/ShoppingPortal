@@ -67,10 +67,10 @@ public class EmailService {
 
 		boolean isEmailSent = sendMail(mailData, attachments);
 		if (isEmailSent) {
-			log.info("Email sent successfully ::  "+ mailData);
-			response.put("success", mailData);
+//			log.info("Email sent successfully ::  "+ mailData);
+			response.put("success", true);
 		} else {
-			response.put("error", "Failed to Send Email");
+			response.put("error", false);
 		}
 		return response;
 	}
@@ -91,7 +91,7 @@ public class EmailService {
 		String host = "smtp.gmail.com";
 		String port = "587";
 		String username = "no.replay.bosa@gmail.com";
-		String password = "dqmhphphccfccaol";
+		String password = "nvermdlskpeuyfkv";
 		String displayEmail = "no.replay.bosa@gmail.com";
 
 		try {
