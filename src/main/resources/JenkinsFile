@@ -48,15 +48,15 @@ pipeline {
                 }
             }
         }
-        stage('Deploy') {
+       stage('Deploy') {
             steps {
                 script {
                     def warFileExists = fileExists("target/${WAR_FILE_NAME}")
-
+                    
                     if (warFileExists) {
                         echo 'Deploying WAR file to Tomcat...'
 
-                        def deployCmd = "curl -u ${TOMCAT_USERNAME}:${TOMCAT_PASSWORD} -T \"target/${WAR_FILE_NAME}\" \"${TOMCAT_URL}/deploy?path=/JodoShoppingPortal&update=true\""
+                        def deployCmd = "curl -u ${TOMCAT_USERNAME}:${TOMCAT_PASSWORD} -T target/${WAR_FILE_NAME} \"${TOMCAT_URL}/deploy?path=/JodoShoppingPortal&update=true\""
                         def deployResult = bat(script: deployCmd, returnStatus: true)
 
                         if (deployResult == 0) {
