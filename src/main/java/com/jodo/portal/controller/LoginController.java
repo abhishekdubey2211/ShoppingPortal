@@ -27,8 +27,6 @@ import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -79,7 +77,7 @@ public class LoginController {
 	}
 
 
-	@GetMpaping("/version")	
+	@GetMapping("/version")	
 	public String getVersion(){
 		return "29/12/2024 LoginWebservice 2.0.1";
 	}
