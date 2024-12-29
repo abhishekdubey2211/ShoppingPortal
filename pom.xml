@@ -137,7 +137,7 @@
 
 	<build>
 		<plugins>
-			<!-- Spring Boot Maven Plugin - Keep it last -->
+			<!-- Spring Boot Maven Plugin -->
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
@@ -154,11 +154,11 @@
 							<goal>timestamp-property</goal>
 						</goals>
 						<configuration>
-							<name>maven.build.timestamp</name>
-							<pattern>yyyy-MM-dd HH:mm:ss</pattern> <!-- Desired
+							<name>build.timestamp</name> <!-- Property name -->
+							<pattern>yyyy-MM-dd HH:mm:ss</pattern> <!-- Timestamp
 							format -->
 							<timeZone>Asia/Kolkata</timeZone> <!-- Set your local
-							time zone, e.g., Asia/Kolkata -->
+							time zone -->
 						</configuration>
 					</execution>
 				</executions>
@@ -171,10 +171,9 @@
 				<configuration>
 					<archive>
 						<manifestEntries>
-							<splashscreen-image>${image.name}</splashscreen-image>
 							<Built-By>${developer.name}</Built-By>
 							<Built-Date>${build.timestamp}</Built-Date> <!--
-							Ensure this is referencing the correct property -->
+							Store the build timestamp -->
 							<Project-Name>${project.name}</Project-Name>
 							<Project-Description>${project.description}</Project-Description>
 							<Project-URL>${project.url}</Project-URL>

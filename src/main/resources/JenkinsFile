@@ -1,0 +1,98 @@
+pipeline {
+    agent any
+    tools {
+        maven 'Maven'
+    }
+  environment {
+        TOMCAT_USERNAME = 'tomcat' // Replace with your Tomcat username
+        TOMCAT_PASSWORD = 'tomcat' // Replace with your Tomcat password
+        TOMCAT_URL = 'http://localhost:8085/manager/text'
+        WAR_FILE_NAME = 'JodoShoppingPortal.war'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                echo 'Checking out the repository...'
+                git branch: 'main',
+                    credentialsId: 'gitlogin',
+                    url: 'https://github.com/abhishekdubey2211/ShoppingPortal.git'
+            }
+        }
+
+        stage('Build') {
+            steps {
+                echo 'Building the project with Maven...'
+                bat 'mvn clean install'  // Use 'bat' for Windows to run Maven build
+            }
+        }
+
+      
+        stage('Archive') {
+            steps {
+                script {
+                    def warFile = bat(script: 'dir /b target\\*.war', returnStatus: true) == 0
+                    def jarFile = bat(script: 'dir /b target\\*.jar', returnStatus: true) == 0
+
+                    if (warFile) {
+                        echo 'WAR file found. Archiving WAR file and copying to WARS directory...'
+                        archiveArtifacts artifacts: 'target/*.war', allowEmptyArchive: true
+                        bat 'copy target\\*.war C:\\Users\\abhis\\Downloads\\WARS\\'
+                    } else if (jarFile) {
+                        echo 'No WAR file found. Checking for JAR file and copying to JARS directory...'
+                        archiveArtifacts artifacts: 'target/*.jar', allowEmptyArchive: true
+                        bat 'copy target\\*.jar C:\\Users\\abhis\\Downloads\\JARS\\'
+                    } else {
+                        echo 'No WAR or JAR file found in the target directory.'
+                    }
+                }
+            }
+        }
+        stage('Deploy') {
+            steps {
+                script {
+                    def warFileExists = fileExists("target/${WAR_FILE_NAME}")
+
+                    if (warFileExists) {
+                        echo 'Deploying WAR file to Tomcat...'
+
+                        def deployCmd = "curl -u ${TOMCAT_USERNAME}:${TOMCAT_PASSWORD} -T \"target/${WAR_FILE_NAME}\" \"${TOMCAT_URL}/deploy?path=/JodoShoppingPortal&update=true\""
+                        def deployResult = bat(script: deployCmd, returnStatus: true)
+
+                        if (deployResult == 0) {
+                            echo 'Deployment successful!'
+                        } else {
+                            error('Deployment failed. Please check Tomcat logs.')
+                        }
+                    } else {
+                        echo 'No WAR file found to deploy.'
+                        error('No WAR file found for deployment.')
+                    }
+                }
+            }
+        }
+    }
+        post {
+        success {
+            emailext(
+                subject: "Build Success: ${env.JOB_NAME} ${env.BUILD_NUMBER}",
+                body: "The build was successful.\n\nJob: ${env.JOB_NAME}\nBuild Number: ${env.BUILD_NUMBER}",
+                to: 'abdubey42@gmail.com'
+            )
+        }
+        failure {
+            emailext(
+                subject: "Build Failed: ${env.JOB_NAME} ${env.BUILD_NUMBER}",
+                body: "The build failed.\n\nJob: ${env.JOB_NAME}\nBuild Number: ${env.BUILD_NUMBER}",
+                to: 'abdubey42@gmail.com'
+            )
+        }
+        unstable {
+            emailext(
+                subject: "Build Unstable: ${env.JOB_NAME} ${env.BUILD_NUMBER}",
+                body: "The build is unstable.\n\nJob: ${env.JOB_NAME}\nBuild Number: ${env.BUILD_NUMBER}",
+                to: 'abdubey42@gmail.com'
+            )
+        }
+    }
+}
