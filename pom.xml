@@ -16,6 +16,7 @@
 	<name>JodoShoppingPortal</name>
 	<description>JodoShoppingPortal</description>
 	<properties>
+	    <maven.build.timestamp.format>yyyy-MM-dd HH:mm:ss</maven.build.timestamp.format>
 		<java.version>21</java.version>
 	</properties>
 	<dependencies>
@@ -136,21 +137,39 @@
 	</dependencies>
 
 	<build>
-		<plugins>
-			<plugin>
-				<groupId>org.springframework.boot</groupId>
-				<artifactId>spring-boot-maven-plugin</artifactId>
-				<configuration>
-					<excludes>
-						<exclude>
-							<groupId>org.projectlombok</groupId>
-							<artifactId>lombok</artifactId>
-						</exclude>
-					</excludes>
-				</configuration>
-			</plugin>
-		</plugins>
-		<finalName>JodoShoppingPortal</finalName>
-	</build>
+    <finalName>JodoShoppingPortal</finalName>
+    <plugins>
+        <!-- Spring Boot Plugin -->
+        <plugin>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-maven-plugin</artifactId>
+            <configuration>
+                <!-- Exclude Lombok -->
+                <excludes>
+                    <exclude>
+                        <groupId>org.projectlombok</groupId>
+                        <artifactId>lombok</artifactId>
+                    </exclude>
+                </excludes>
+            </configuration>
+        </plugin>
 
+        <!-- Maven WAR Plugin for Custom Manifest Entries -->
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-war-plugin</artifactId>
+            <version>3.4.0</version>
+            <configuration>
+                <archive>
+                    <manifestEntries>
+                        <Application-Name>JodoShoppingPortal</Application-Name>
+                        <Application-Version>2.0.1</Application-Version>
+                        <Build-Time>${maven.build.timestamp}</Build-Time>
+                        <Developer>Email: abdubey42@gmail.com</Developer>
+                    </manifestEntries>
+                </archive>
+            </configuration>
+        </plugin>
+    </plugins>
+</build>
 </project>
