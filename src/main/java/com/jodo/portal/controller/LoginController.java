@@ -68,10 +68,18 @@ public class LoginController {
 	@Autowired
 	LoginServiceImplementation loginServiceImplementation = new LoginServiceImplementation();
 
+
+
 	public LoginController() {
 		this.redis = new RedisUtil();
 		this.jwtTokenUtility = new JWTEncryptionUtility(false);
 		this.authorizationTokenUtility = new JWTEncryptionUtility(true);
+	}
+
+
+	@GetMpaping("/version")	
+	public String getVersion(){
+		return "29/12/2024 LoginWebservice 2.0.1";
 	}
 
 	@PostMapping("/generatekey")
