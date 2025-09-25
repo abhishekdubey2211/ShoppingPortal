@@ -108,3 +108,54 @@ public class Main {
 // const decryptedString = decryptAndDecode(encryptedString, password, salt);
 // console.log("Decrypted:", decryptedString);
 
+
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
+
+ class Main {
+
+    private static final String HMAC_ALGO = "HmacSHA512";
+
+    // Generate HS512 HMAC signature and encode in Base64
+    public static String sign(String message, String secret) throws Exception {
+        Mac sha512_HMAC = Mac.getInstance(HMAC_ALGO);
+        SecretKeySpec keySpec = new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), HMAC_ALGO);
+        sha512_HMAC.init(keySpec);
+        byte[] macData = sha512_HMAC.doFinal(message.getBytes(StandardCharsets.UTF_8));
+        return Base64.getEncoder().encodeToString(macData);
+    }
+
+    // Example usage
+    public static void main(String[] args) {
+        try {
+            String message = "9769078266";
+            String secret = "GcaCWxn2prfNFW0eEGpNC9u8d+bkhGt4nyILovb5fn0=";
+
+            String signature = sign(message, secret);
+            System.out.println("HS512 Signature: " + signature);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}
+
+
+// _________________________________JS Version__________________________
+// const crypto = require('crypto');
+
+// function signHS512(message, secret) {
+//     const hmac = crypto.createHmac('sha512', secret);
+//     hmac.update(message, 'utf8');
+//     const signature = hmac.digest('base64');
+//     return signature;
+// }
+
+// // Example usage
+// const message = "9769078266";
+// const secret = "GcaCWxn2prfNFW0eEGpNC9u8d+bkhGt4nyILovb5fn0=";
+
+// const signature = signHS512(message, secret);
+// console.log("HS512 Signature:", signature);
+
