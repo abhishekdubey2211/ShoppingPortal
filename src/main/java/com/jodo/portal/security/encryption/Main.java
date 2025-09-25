@@ -44,21 +44,67 @@ public class Main {
     }
 
 //    // Example usage
-//    public static void main(String[] args) {
-//        try {
-//            String plainString = "9769078266";
-//            String password = "GcaCWxn2prfNFW0eEGpNC9u8d+bkhGt4nyILovb5fn0=";
-//            String salt = "@#$sbI&L";
-//
-//            // Encrypt the string
-//            String encryptedString = encryptAndEncode(plainString, password, salt);
-//            System.out.println("Encrypted: " + encryptedString);
-//
-//            // Decrypt the string
-//            String decryptedString = decryptAndDecode(encryptedString, password, salt);
-//            System.out.println("Decrypted: " + decryptedString);
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//        }
-//    }
+   public static void main(String[] args) {
+       try {
+           String plainString = "9769078266";
+           String password = "GcaCWxn2prfNFW0eEGpNC9u8d+bkhGt4nyILovb5fn0=";
+           String salt = "@#$sbI&L";
+
+           // Encrypt the string
+           String encryptedString = encryptAndEncode(plainString, password, salt);
+           System.out.println("Encrypted: " + encryptedString);
+
+           // Decrypt the string
+           String decryptedString = decryptAndDecode(encryptedString, password, salt);
+           System.out.println("Decrypted: " + decryptedString);
+       } catch (Exception e) {
+           e.printStackTrace();
+       }
+   }
 }
+
+
+
+// --------------------------------- JavaSCRIPT VERSION ---------------------------------
+// const crypto = require('crypto');
+
+// function generateKey(password, salt) {
+//     // Derive a 256-bit key using PBKDF2 with SHA-1
+//     return crypto.pbkdf2Sync(
+//         password,
+//         salt,
+//         65536, // iterations
+//         32,    // key length in bytes (256 bits)
+//         'sha1'
+//     );
+// }
+
+// function encryptAndEncode(raw, password, salt) {
+//     const key = generateKey(password, salt);
+//     const iv = Buffer.alloc(16, 0); // 16-byte zero IV to match Java code
+//     const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
+//     let encrypted = cipher.update(raw, 'utf8', 'base64');
+//     encrypted += cipher.final('base64');
+//     return encrypted;
+// }
+
+// function decryptAndDecode(encryptedText, password, salt) {
+//     const key = generateKey(password, salt);
+//     const iv = Buffer.alloc(16, 0); // same IV
+//     const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
+//     let decrypted = decipher.update(encryptedText, 'base64', 'utf8');
+//     decrypted += decipher.final('utf8');
+//     return decrypted;
+// }
+
+// // Example usage
+// const plainString = "9769078266";
+// const password = "GcaCWxn2prfNFW0eEGpNC9u8d+bkhGt4nyILovb5fn0=";
+// const salt = "@#$sbI&L";
+
+// const encryptedString = encryptAndEncode(plainString, password, salt);
+// console.log("Encrypted:", encryptedString);
+
+// const decryptedString = decryptAndDecode(encryptedString, password, salt);
+// console.log("Decrypted:", decryptedString);
+
